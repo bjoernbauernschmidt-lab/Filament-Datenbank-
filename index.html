@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Filament Manager</title>
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Filament">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--text:#e2e8f0;--muted:#94a3b8;--acc:#38bdf8;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,sans-serif}
+header{position:sticky;top:0;background:rgba(15,23,42,.95);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;z-index:5}
+h1{font-size:18px;margin:0;flex:1}
+main{padding:16px;max-width:900px;margin:auto;padding-bottom:90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,select,button{width:100%;font:inherit;color:var(--text);background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:10px}
+button{cursor:pointer;font-weight:600}.primary{background:var(--acc);border-color:var(--acc);color:#04202e}.ghost{background:transparent}
+.small{padding:6px 10px;font-size:13px;width:auto}.row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.spool{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#16223a}
+.spool h3{margin:0 0 6px;font-size:16px}.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:#0b1220;border:1px solid var(--line);color:var(--muted);margin-right:6px}
+.bar{height:9px;background:#0b1220;border-radius:99px;overflow:hidden;margin:8px 0}.bar>i{display:block;height:100%;background:var(--acc)}
+.pct{font-size:13px;color:var(--muted)}nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:rgba(15,23,42,.97);border-top:1px solid var(--line);z-index:6}
+nav button{border:0;border-radius:0;background:none;padding:12px 4px;color:var(--muted);font-size:12px}nav button.active{color:var(--acc)}
+.hidden{display:none}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+.muted{color:var(--muted);font-size:13px}.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:78px;background:#0b1220;border:1px solid var(--acc);padding:10px 14px;border-radius:10px;z-index:20}
+</style>
+</head>
+<body>
+<header><h1>🧵 Filament Manager</h1><button class="small ghost" id="exportBtn">Sichern</button><button class="small ghost" id="importBtn">Laden</button><input type="file" id="importFile" accept=".json" class="hidden"></header>
+<main>
+<section id="view-spools">
+<div class="card"><h2>Neue Spule</h2><div class="grid">
+<div><label>Hersteller</label><input id="brand" placeholder="Bambu Lab"></div>
+<div><label>Filament</label><select id="material"><option>PLA</option><option>PLA Matt</option><option>PLA Silk</option><option>PETG</option><option>PETG Matt</option><option>ABS</option><option>ASA</option><option>TPU</option><option>PA</option><option>Sonstiges</option></select></div>
+<div><label>Farbe</label><input id="color" placeholder="Schwarz"></div>
+<div><label>Netto-Filamentgewicht (g)</label><input id="netWeight" type="number" value="1000" min="1"></div>
+<div><label>Leergewicht Spule (g)</label><input id="tareWeight" type="number" value="250" min="0"></div>
+<div><label>AMS-Slot</label><input id="amsSlot" placeholder="z. B. AMS A1 / Slot 2"></div>
+<div><label>RFID-/Spulen-ID</label><input id="rfid" placeholder="RFID oder eigener Code"></div>
+<div><label>Kaufpreis (optional €)</label><input id="price" type="number" step="0.01" min="0"></div>
+</div><div class="row" style="margin-top:10px"><button class="primary" id="addSpool">Spule anlegen</button><button class="ghost" id="resetForm">Formular leeren</button></div></div>
+<div class="card"><div class="row"><input id="search" placeholder="Suche: Hersteller, Farbe, RFID, AMS …"><select id="filterMaterial" style="max-width:180px"><option value="">Alle Materialien</option><option>PLA</option><option>PLA Matt</option><option>PLA Silk</option><option>PETG</option><option>PETG Matt</option><option>ABS</option><option>ASA</option><option>TPU</option><option>PA</option><option>Sonstiges</option></select></div></div>
+<div id="spoolList"></div>
+</section>
+<section id="view-use" class="hidden">
+<div class="card"><h2>Verbrauch buchen</h2><div class="grid"><div><label>Spule</label><select id="useSpool"></select></div><div><label>Verbrauch (g)</label><input id="useGrams" type="number" min="0.1" step="0.1" value="10"></div><div><label>Datum</label><input id="useDate" type="date"></div></div><div class="row" style="margin-top:10px"><button class="primary" id="bookUse">Verbrauch buchen</button></div></div>
+<div class="card"><h2>Restmenge korrigieren</h2><div class="grid"><div><label>Spule</label><select id="corrSpool"></select></div><div><label>Tatsächliches Restgewicht (g)</label><input id="corrRemaining" type="number" min="0" step="1"></div></div><div class="row" style="margin-top:10px"><button class="primary" id="correctRemaining">Korrektur speichern</button></div></div>
+</section>
+<section id="view-history" class="hidden"><div class="card"><h2>Verbrauchshistorie</h2><div class="row"><button class="small ghost" id="clearHistory">Historie löschen</button></div><div style="overflow:auto"><table><thead><tr><th>Datum</th><th>Spule</th><th>Art</th><th>Menge</th><th>Rest</th><th>Notiz</th></tr></thead><tbody id="historyBody"></tbody></table></div></div></section>
+<section id="view-data" class="hidden"><div class="card"><h2>Lokale Daten & Sicherung</h2><p>Alle Daten liegen ausschließlich lokal auf deinem iPhone. Erstelle regelmäßig ein JSON-Backup.</p><div class="row"><button class="primary" id="exportBtn2">Backup exportieren</button><button id="importBtn2">Backup importieren</button><button class="ghost" id="wipeBtn">Alle Daten löschen</button></div></div><div class="card"><h2>Statistik</h2><div id="stats" class="muted"></div></div></section>
+</main>
+<nav><button data-view="spools" class="active">🧵 Spulen</button><button data-view="use">⚖️ Verbrauch</button><button data-view="history">📜 Historie</button><button data-view="data">💾 Daten</button></nav>
+<div id="toast" class="toast hidden"></div>
+<script>
+const KEY='filamentManager.v3';let db=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||empty()}catch(e){return empty()}}
+function empty(){return{spools:[],history:[],seq:1}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2200)}
+function uid(){return 'S'+String(db.seq++).padStart(4,'0')}
+function label(s){return `${s.brand||'Unbekannt'} · ${s.material} · ${s.color||'—'} · ${s.id}`}
+function find(id){return db.spools.find(s=>s.id===id)}
+document.getElementById('useDate').value=new Date().toISOString().slice(0,10);
+document.getElementById('addSpool').onclick=()=>{
+const net=parseFloat(netWeight.value)||0,tare=parseFloat(tareWeight.value)||0;
+if(net<=0){toast('Bitte gültiges Filamentgewicht angeben');return}
+const s={id:uid(),brand:brand.value.trim(),material:material.value,color:color.value.trim(),netWeight:net,tareWeight:tare,remaining:net,amsSlot:amsSlot.value.trim(),rfid:rfid.value.trim(),price:parseFloat(price.value)||0,created:new Date().toISOString()};
+db.spools.unshift(s);db.history.unshift({date:new Date().toISOString().slice(0,10),spoolId:s.id,type:'Anlage',amount:0,remaining:net,note:'Spule angelegt'});
+save();resetForm();toast('Spule '+s.id+' angelegt')};
+function resetForm(){['brand','color','amsSlot','rfid','price'].forEach(id=>document.getElementById(id).value='');netWeight.value=1000;tareWeight.value=250}
+document.getElementById('resetForm').onclick=resetForm;
+function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmt(n){return (Math.round((+n||0)*10)/10).toLocaleString('de-DE')}
+function render(){
+const q=search.value.toLowerCase(),fm=filterMaterial.value;
+const list=db.spools.filter(s=>(!fm||s.material===fm)&&[s.brand,s.material,s.color,s.amsSlot,s.rfid,s.id].join(' ').toLowerCase().includes(q));
+spoolList.innerHTML=list.map(s=>{const p=Math.max(0,Math.min(100,s.remaining/s.netWeight*100));const c=p>50?'var(--ok)':p>15?'var(--warn)':'var(--bad)';
+return `<div class="spool"><h3>${esc(s.brand||'Unbekannt')} · ${esc(s.material)} · ${esc(s.color||'—')}</h3><div><span class="badge">${s.id}</span>${s.amsSlot?`<span class="badge">AMS: ${esc(s.amsSlot)}</span>`:''}${s.rfid?`<span class="badge">ID: ${esc(s.rfid)}</span>`:''}</div><div class="bar"><i style="width:${p}%;background:${c}"></i></div><div class="pct">${fmt(s.remaining)} g von ${fmt(s.netWeight)} g übrig (${p.toFixed(0)} %)</div><div class="row" style="margin-top:8px"><input type="number" id="q-${s.id}" placeholder="g" min="0.1" step="0.1" style="max-width:100px"><button class="small primary" onclick="quickUse('${s.id}')">Buchen</button><button class="small ghost" onclick="editSpool('${s.id}')">Bearbeiten</button><button class="small ghost" onclick="deleteSpool('${s.id}')">Löschen</button></div></div>`}).join('')||'<div class="card muted">Noch keine passenden Spulen.</div>';
+const o=db.spools.map(s=>`<option value="${s.id}">${esc(label(s))} — ${fmt(s.remaining)} g</option>`).join('');useSpool.innerHTML=o;corrSpool.innerHTML=o;
+historyBody.innerHTML=db.history.slice().reverse().map(h=>{const s=find(h.spoolId);return `<tr><td>${esc(h.date)}</td><td>${s?esc(label(s)):'—'}</td><td>${esc(h.type)}</td><td>${h.amount?fmt(h.amount)+' g':'—'}</td><td>${fmt(h.remaining)} g</td><td>${esc(h.note||'')}</td></tr>`}).join('')||'<tr><td colspan="6" class="muted">Noch keine Einträge.</td></tr>';
+const total=db.spools.reduce((a,s)=>a+s.remaining,0),used=db.history.filter(h=>h.type==='Verbrauch').reduce((a,h)=>a+h.amount,0);
+stats.innerHTML=`Spulen: ${db.spools.length} · Restbestand: ${fmt(total)} g · Verbrauch: ${fmt(used)} g · Einträge: ${db.history.length}`}
+window.quickUse=id=>{const g=parseFloat(document.getElementById('q-'+id).value);if(g>0)book(id,g,'Verbrauch','Schnellbuchung')};
+document.getElementById('bookUse').onclick=()=>{const g=parseFloat(useGrams.value);if(useSpool.value&&g>0)book(useSpool.value,g,'Verbrauch','Verbrauch-Ansicht')};
+document.getElementById('correctRemaining').onclick=()=>{const s=find(corrSpool.value),r=parseFloat(corrRemaining.value);if(!s||isNaN(r)||r<0){toast('Bitte Spule und Restmenge angeben');return}
+const d=s.remaining-r;s.remaining=r;db.history.unshift({date:new Date().toISOString().slice(0,10),spoolId:s.id,type:'Korrektur',amount:d,remaining:r,note:`Korrektur auf ${fmt(r)} g`});save();toast('Restmenge korrigiert')};
+function book(id,g,type,note){const s=find(id);if(!s)return;s.remaining=Math.max(0,s.remaining-g);db.history.unshift({date:useDate.value||new Date().toISOString().slice(0,10),spoolId:id,type,amount:g,remaining:s.remaining,note});save();toast(`${fmt(g)} g gebucht`)}
+window.editSpool=id=>{const s=find(id);const v=prompt('Neues Restgewicht in Gramm:',s.remaining);if(v===null)return;const r=parseFloat(v);if(isNaN(r)||r<0)return;
+const d=s.remaining-r;s.remaining=r;db.history.unshift({date:new Date().toISOString().slice(0,10),spoolId:id,type:'Korrektur',amount:d,remaining:r,note:'Manuelle Bearbeitung'});save()};
+window.deleteSpool=id=>{if(!confirm('Spule wirklich löschen?'))return;db.spools=db.spools.filter(s=>s.id!==id);save();toast('Spule gelöscht')};
+document.getElementById('clearHistory').onclick=()=>{if(confirm('Historie löschen?')){db.history=[];save()}};
+document.getElementById('wipeBtn').onclick=()=>{if(confirm('Alle lokalen Daten löschen?')){db=empty();save()}};
+function exportData(){const b=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`filament-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()}
+document.getElementById('exportBtn').onclick=exportData;document.getElementById('exportBtn2').onclick=exportData;
+function importData(f){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.spools||!d.history)throw 0;db=d;save();toast('Backup importiert')}catch(e){toast('Ungültige Backup-Datei')}};r.readAsText(f)}
+document.getElementById('importBtn').onclick=()=>importFile.click();document.getElementById('importBtn2').onclick=()=>importFile.click();
+document.getElementById('importFile').onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value=''};
+['search','filterMaterial'].forEach(id=>document.getElementById(id).oninput=render);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');['spools','use','history','data'].forEach(v=>document.getElementById('view-'+v).classList.toggle('hidden',v!==b.dataset.view));window.scrollTo(0,0)});
+render();
+</script>
+</body>
+</html>
